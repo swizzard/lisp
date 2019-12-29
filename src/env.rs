@@ -10,7 +10,7 @@ pub enum Arity {
 }
 
 #[derive(Debug)]
-struct Func(HashMap<Arity, F>);
+pub struct Func(HashMap<Arity, F>);
 
 impl Func {
     pub fn lookup(&self, arity: Arity) -> Option<&F> {
@@ -21,13 +21,13 @@ impl Func {
         m.insert(arity, f);
         Self(m)
     }
-    pub fn add_arity(&mut self, f: F, arity: Arity) {
+    pub fn add_arity(&mut self, arity: Arity, f: F) {
         self.0.insert(arity, f);
     }
 }
 
 #[derive(Debug)]
-enum Entry {
+pub enum Entry {
     Val(Val),
     Func(Func),
 }
@@ -45,16 +45,14 @@ impl<'a, 'b> Env<'a> {
     }
     pub fn register_func(&mut self, name: &'a str, arity: Arity, f: F) -> Option<ErrType> {
         if let Some(ref mut existing) = self.scope.0.get_mut(name) {
-
-    pub fn register_func(&mut self, name: &'a str, f: Func) -> Option<ErrType> {
-        if let Some(ref mut existing) = self.scope.0.get_mut(name) {
-            if existing.add_arity(f) {
+            if let Entry::Func(ef) = existing {
+                ef.add_arity(arity, f);
                 None
             } else {
                 Some(ErrType::not_a_function(name))
             }
         } else {
-            self.scope.0.insert(name, Entry::Func(f));
+            self.scope.0.insert(name, Entry::Func(Func::new(arity, f)));
             None
         }
     }
@@ -83,12 +81,12 @@ mod tests {
     #[test]
     fn test_lookup() {
         let mut m = HashMap::new();
-        m.insert("a", Val::Int(0));
+        m.insert("a", Entry::Val(Val::Int(0)));
         let e = Env {
             parent: None,
             scope: Scope(m)
         };
-        if let Ok(v) = e.lookup("a") {
+        if let Ok(Entry::Val(v)) = e.lookup("a") {
             assert_eq!(*v, Val::Int(0));
         } else {
             panic!("test_lookup");
@@ -98,17 +96,17 @@ mod tests {
     #[test]
     fn test_lookup_parent() {
         let mut p_m = HashMap::new();
-        p_m.insert("a", Val::Int(0));
+        p_m.insert("a", Entry::Val(Val::Int(0)));
         let m = HashMap::new();
         let parent = Env {
             parent: None,
-            scope: p_m,
+            scope: Scope(p_m),
         };
         let e = Env {
             parent: Some(&parent),
-            scope: m
+            scope: Scope(m)
         };
-        if let Ok(v) = e.lookup("a") {
+        if let Ok(Entry::Val(v)) = e.lookup("a") {
             assert_eq!(*v, Val::Int(0));
         } else {
             panic!("test_lookup_parent");
@@ -118,18 +116,18 @@ mod tests {
     #[test]
     fn test_shadow() {
         let mut p_m = HashMap::new();
-        p_m.insert("a", Val::Int(0));
+        p_m.insert("a", Entry::Val(Val::Int(0)));
         let mut m = HashMap::new();
-        m.insert("a", Val::Int(1));
+        m.insert("a", Entry::Val(Val::Int(1)));
         let parent = Env {
             parent: None,
-            scope: p_m,
+            scope: Scope(p_m),
         };
         let e = Env {
             parent: Some(&parent),
-            scope: m
+            scope: Scope(m)
         };
-        if let Ok(v) = e.lookup("a") {
+        if let Ok(Entry::Val(v)) = e.lookup("a") {
             assert_eq!(*v, Val::Int(1));
         } else {
             panic!("test_shadow");
@@ -140,10 +138,10 @@ mod tests {
     fn test_lookup_error() {
         let mut m = HashMap::new();
         let a = "a";
-        m.insert(a, Val::Int(0));
+        m.insert(a, Entry::Val(Val::Int(0)));
         let e = Env {
             parent: None,
-            scope: m
+            scope: Scope(m)
         };
         let expected_err = ErrType::lookup("b");
         if let Err(err) = e.lookup("b") {
@@ -156,18 +154,16 @@ mod tests {
     #[test]
     fn test_lookup_parent_error() {
         let mut p_m = HashMap::new();
-        let a = "a";
-        p_m.insert(a, Val::Int(0));
+        p_m.insert("a", Entry::Val(Val::Int(0)));
         let mut m = HashMap::new();
-        let b = "b";
-        m.insert(b, Val::Int(1));
+        m.insert("b", Entry::Val(Val::Int(1)));
         let parent = Env {
             parent: None,
-            scope: p_m,
+            scope: Scope(p_m),
         };
         let e = Env {
             parent: Some(&parent),
-            scope: m
+            scope: Scope(m)
         };
         let expected_err = ErrType::lookup("c");
         if let Err(err) = e.lookup("c") {
@@ -175,5 +171,33 @@ mod tests {
         } else {
             panic!("test_lookup_parent_error");
         }
+    }
+
+    #[test]
+    fn test_func_lookup() {
+        let f: F = |args| Val::Int(
+            args[0].unwrap_int().unwrap() + args[1].unwrap_int().unwrap());
+        let fu = Func::new(Arity::SomeArgs(2), f);
+        assert!(fu.lookup(Arity::SomeArgs(2)).is_some());
+    }
+
+    #[test]
+    fn test_func_lookup_varargs() {
+        let f: F = |args| args.into_iter().fold(
+            Val::Int(0),
+            |a, b| Val::Int(a.unwrap_int().unwrap() + b.unwrap_int().unwrap()));
+        let fu = Func::new(Arity::VarArgs, f);
+        assert!(fu.lookup(Arity::SomeArgs(2)).is_some());
+    }
+
+    #[test]
+    fn test_func_add_arity() {
+        let f1: F = |_| Val::Int(0);
+        let f2: F = |args| Val::Int(
+            args[0].unwrap_int().unwrap() + args[1].unwrap_int().unwrap());
+        let mut f = Func::new(Arity::NoArgs, f1);
+        assert!(f.lookup(Arity::SomeArgs(2)).is_none());
+        f.add_arity(Arity::SomeArgs(2), f2);
+        assert!(f.lookup(Arity::SomeArgs(2)).is_some());
     }
 }

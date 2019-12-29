@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::fmt;
 
 
@@ -67,63 +66,5 @@ impl Val {
             Val::Bool(a) => Some(a),
             _ => None
         }
-    }
-}
-
-
-#[cfg(tests)]
-mod test_val {
-    use super::*;
-
-    #[test]
-    fn test_is_func() {
-        let v = Val::Int(1);
-        assert!(!v.is_func());
-        let v2 = Val::Func(Func::new(NoArgs, || 0));
-        assert!(v2.is_func());
-    }
-
-    #[test]
-    fn test_add_arity() {
-        assert!(!Val::Int(1).add_arity(NoArgs, || 0));
-        let v = Val::new_func(NoArgs, || 0);
-        assert!(v.add_arity(VarArgs, |args| args.iter().fold(0, |acc, x| acc + x)));
-    }
-}
-
-#[cfg(test)]
-mod test_func {
-    use super::*;
-
-    #[test]
-    fn test_get_f() -> Result<(), String> {
-        let v = Val::new_func(
-            Arity::SomeArgs(2),
-            |args| Val::Int(
-                args[0].unwrap_int().unwrap() + args[1].unwrap_int().unwrap())
-            ).unwrap_func().unwrap();
-        assert!(v.get_f(Arity::SomeArgs(2)).is_some());
-        Ok(())
-    }
-
-    #[test]
-    fn test_get_f_varargs() {
-        let v = Val::new_func(
-            Arity::VarArgs,
-            |args| args.iter().fold(Val::Int(0), |acc, x| Val::Int(
-                    acc.unwrap_int().unwrap() + x.unwrap_int().unwrap()))
-            ).unwrap_func().unwrap();
-        assert!(v.get_f(Arity::SomeArgs(2)).is_some());
-    }
-
-    #[test]
-    fn test_add_arity() {
-        let f = Val::new_func(Arity::NoArgs, |_| Val::Int(0));
-        let v = f.unwrap_func().unwrap();
-        v.add_arity(
-            Arity::SomeArgs(2),
-            |args| Val::Int(args[0].unwrap_int().unwrap() + args[1].unwrap_int().unwrap())
-        );
-        assert!(v.get_f(Arity::SomeArgs(2)).is_some());
     }
 }

@@ -3,65 +3,66 @@ use std::fmt::{Display, Formatter};
 use std::fmt;
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct TypeError<'a> {
-    name: &'a str,
-    actual: &'a str,
-    expected: &'a str
+pub struct TypeError {
+    actual: String,
+    expected: String,
 }
 
-impl<'a> Display for TypeError<'a> {
+impl Display for TypeError {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "Wrong type for {}: expected {}, got {}",
-               self.name, self.expected, self.actual)
+        write!(f, "Wrong type: expected {}, got {}",
+               self.expected, self.actual)
     }
 }
 
+impl Error for TypeError {}
+
 #[derive(Debug, PartialEq, Eq)]
-pub struct LookupError<'a> {
-    name: &'a str
+pub struct LookupError {
+    name: String
 }
 
-impl<'a> Display for LookupError<'a> {
+impl Display for LookupError {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{} not found", self.name)
     }
 }
 
-impl<'a> Error for LookupError<'a> {}
+impl Error for LookupError {}
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct NotAFunctionError<'a> {
-    name: &'a str
+pub struct NotAFunctionError {
+    name: String
 }
 
-impl<'a> Display for NotAFunctionError<'a> {
+impl Display for NotAFunctionError {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt:: Result {
         write!(f, "{} is not a function", self.name)
     }
 }
 
-impl<'a> Error for NotAFunctionError<'a> {}
+impl Error for NotAFunctionError {}
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct ArityMismatchError<'a> {
-    name: &'a str,
+pub struct ArityMismatchError {
+    name: String,
 }
 
-impl<'a> Display for ArityMismatchError<'a> {
+impl Display for ArityMismatchError {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "Wrong number of args for {}", self.name)
     }
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum ErrType<'a> {
-    TypeError(TypeError<'a>),
-    LookupError(LookupError<'a>),
-    NotAFunctionError(NotAFunctionError<'a>),
-    ArityMismatchError(ArityMismatchError<'a>),
+pub enum ErrType {
+    TypeError(TypeError),
+    LookupError(LookupError),
+    NotAFunctionError(NotAFunctionError),
+    ArityMismatchError(ArityMismatchError),
 }
 
-impl<'a> Display for ErrType<'a> {
+impl Display for ErrType {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             ErrType::TypeError(e) => write!(f, "{}", e),
@@ -72,17 +73,17 @@ impl<'a> Display for ErrType<'a> {
     }
 }
 
-impl<'a> ErrType<'a> {
-    pub fn type_error(name: &'a str, expected: &'a str, actual: &'a str) -> ErrType<'a> {
-        ErrType::TypeError(TypeError { name, expected, actual })
+impl ErrType {
+    pub fn type_error(expected: &str, actual: &str) -> ErrType {
+        ErrType::TypeError(TypeError { expected: String::from(expected), actual: String::from(actual) })
     }
-    pub fn lookup(name: &'a str) -> ErrType {
-        ErrType::LookupError(LookupError { name })
+    pub fn lookup(name: &str) -> ErrType {
+        ErrType::LookupError(LookupError { name: String::from(name) })
     }
-    pub fn not_a_function(name: &'a str) -> ErrType {
-        ErrType::NotAFunctionError(NotAFunctionError { name })
+    pub fn not_a_function(name: &str) -> ErrType {
+        ErrType::NotAFunctionError(NotAFunctionError { name: String::from(name) })
     }
-    pub fn arity_mismatch(name: &'a str) -> ErrType {
-        ErrType::ArityMismatchError(ArityMismatchError { name })
+    pub fn arity_mismatch(name: &str) -> ErrType {
+        ErrType::ArityMismatchError(ArityMismatchError { name: String::from(name) })
     }
 }

@@ -1,7 +1,12 @@
 use std::fmt;
 
+use super::errors::ErrType;
 
-pub type F = fn(Vec<Val>) -> Val;
+pub type Res = Result<Val, ErrType>;
+
+pub type Args = Vec<Val>;
+
+pub type F = fn(Args) -> Res;
 
 
 #[derive(Debug)]
@@ -9,6 +14,7 @@ pub enum Val {
     Int(i64),
     Char(char),
     Bool(bool),
+    List(Vec<Val>),
 }
 
 impl PartialEq for Val {
@@ -32,6 +38,12 @@ impl PartialEq for Val {
                     _ => false
                 }
             },
+            Val::List(a) => {
+                match other {
+                    Val::List(b) => a == b,
+                    _ => false
+                }
+            }
         }
     }
 }
@@ -44,27 +56,58 @@ impl fmt::Display for Val {
             Val::Int(a) => write!(f, "{}", a),
             Val::Char(a) => write!(f, "{}", a),
             Val::Bool(a) => write!(f, "{}", a),
+            Val::List(a) => {
+                let l = a.len() - 1;
+                write!(f, "(")?;
+                for (i, v) in a.iter().enumerate() {
+                    write!(f, "{}", v)?;
+                    if i < l {
+                        write!(f, ", ")?;
+                    }
+                };
+                write!(f, ")")?;
+                Ok(())
+            }
         }
     }
 }
 
 impl Val {
-    pub fn unwrap_int(&self) -> Option<&i64> {
+    const INT_TYPE: &'static str = "int";
+    const CHAR_TYPE: &'static str = "char";
+    const BOOL_TYPE: &'static str = "bool";
+    const LIST_TYPE: &'static str = "list";
+
+    fn val_type(&self) -> &str {
         match self {
-            Val::Int(a) => Some(a),
-            _ => None
+            Val::Int(_) => Val::INT_TYPE,
+            Val::Char(_) => Val::CHAR_TYPE,
+            Val::Bool(_) => Val::BOOL_TYPE,
+            Val::List(_) => Val::LIST_TYPE,
         }
     }
-    pub fn unwrap_char(&self) -> Option<&char> {
+    pub fn unwrap_int(&self) -> Result<&i64, ErrType> {
         match self {
-            Val::Char(a) => Some(a),
-            _ => None
+            Val::Int(a) => Ok(a),
+            _ => Err(ErrType::type_error(Val::INT_TYPE, self.val_type()))
         }
     }
-    pub fn unwrap_bool(&self) -> Option<&bool> {
+    pub fn unwrap_char(&self) -> Result<&char, ErrType> {
         match self {
-            Val::Bool(a) => Some(a),
-            _ => None
+            Val::Char(a) => Ok(a),
+            _ => Err(ErrType::type_error(Val::CHAR_TYPE,  self.val_type())),
+        }
+    }
+    pub fn unwrap_bool(&self) -> Result<&bool, ErrType> {
+        match self {
+            Val::Bool(a) => Ok(a),
+            _ => Err(ErrType::type_error(Val::BOOL_TYPE, self.val_type())),
+        }
+    }
+    pub fn unwrap_list(&self) -> Result<&Vec<Val>, ErrType> {
+        match self {
+            Val::List(a) => Ok(a),
+            _ => Err(ErrType::type_error(Val::LIST_TYPE, self.val_type())),
         }
     }
 }

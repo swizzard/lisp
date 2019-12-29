@@ -174,27 +174,40 @@ mod tests {
     }
 
     #[test]
-    fn test_func_lookup() {
-        let f: F = |args| Val::Int(
-            args[0].unwrap_int().unwrap() + args[1].unwrap_int().unwrap());
+    fn test_func_lookup() -> Result<(), ErrType> {
+        let f: F = |args| {
+                let a = args[0].unwrap_int()?;
+                let b = args[1].unwrap_int()?;
+                Ok(Val::Int(a + b))
+        };
         let fu = Func::new(Arity::SomeArgs(2), f);
         assert!(fu.lookup(Arity::SomeArgs(2)).is_some());
+        Ok(())
     }
 
     #[test]
     fn test_func_lookup_varargs() {
         let f: F = |args| args.into_iter().fold(
-            Val::Int(0),
-            |a, b| Val::Int(a.unwrap_int().unwrap() + b.unwrap_int().unwrap()));
+            Ok(Val::Int(0)),
+            |acc, x| {
+                let v1 = acc.unwrap();
+                let v1 = v1.unwrap_int()?;
+                let v2 = x.unwrap_int()?;
+                Ok(Val::Int(v1 + v2))
+            }
+        );
         let fu = Func::new(Arity::VarArgs, f);
         assert!(fu.lookup(Arity::SomeArgs(2)).is_some());
     }
 
     #[test]
     fn test_func_add_arity() {
-        let f1: F = |_| Val::Int(0);
-        let f2: F = |args| Val::Int(
-            args[0].unwrap_int().unwrap() + args[1].unwrap_int().unwrap());
+        let f1: F = |_| Ok(Val::Int(0));
+        let f2: F = |args| {
+            let a = args[0].unwrap_int()?;
+            let b = args[1].unwrap_int()?;
+            Ok(Val::Int(a + b))
+        };
         let mut f = Func::new(Arity::NoArgs, f1);
         assert!(f.lookup(Arity::SomeArgs(2)).is_none());
         f.add_arity(Arity::SomeArgs(2), f2);

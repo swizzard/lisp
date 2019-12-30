@@ -9,12 +9,13 @@ pub type Args = Vec<Val>;
 pub type F = fn(Args) -> Res;
 
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Val {
     Int(i64),
     Char(char),
     Bool(bool),
     List(Vec<Val>),
+    Symbol(String),
 }
 
 impl PartialEq for Val {
@@ -43,6 +44,12 @@ impl PartialEq for Val {
                     Val::List(b) => a == b,
                     _ => false
                 }
+            },
+            Val::Symbol(a) => {
+                match other {
+                    Val::Symbol(b) => a == b,
+                    _ => false
+                }
             }
         }
     }
@@ -56,16 +63,14 @@ impl fmt::Display for Val {
             Val::Int(a) => write!(f, "{}", a),
             Val::Char(a) => write!(f, "{}", a),
             Val::Bool(a) => write!(f, "{}", a),
+            Val::Symbol(a) => write!(f, "'{}", a),
             Val::List(a) => {
                 let l = a.len() - 1;
                 write!(f, "(")?;
-                for (i, v) in a.iter().enumerate() {
-                    write!(f, "{}", v)?;
-                    if i < l {
-                        write!(f, ", ")?;
-                    }
-                };
-                write!(f, ")")?;
+                for v in a[0..l].iter() {
+                    write!(f, "{}, ", v)?;
+                }
+                write!(f, "{})", a[l])?;
                 Ok(())
             }
         }
@@ -77,6 +82,7 @@ impl Val {
     const CHAR_TYPE: &'static str = "char";
     const BOOL_TYPE: &'static str = "bool";
     const LIST_TYPE: &'static str = "list";
+    const SYMBOL_TYPE: &'static str = "symbol";
 
     fn val_type(&self) -> &str {
         match self {
@@ -84,6 +90,7 @@ impl Val {
             Val::Char(_) => Val::CHAR_TYPE,
             Val::Bool(_) => Val::BOOL_TYPE,
             Val::List(_) => Val::LIST_TYPE,
+            Val::Symbol(_) => Val::SYMBOL_TYPE,
         }
     }
     pub fn unwrap_int(&self) -> Result<&i64, ErrType> {
@@ -109,5 +116,29 @@ impl Val {
             Val::List(a) => Ok(a),
             _ => Err(ErrType::type_error(Val::LIST_TYPE, self.val_type())),
         }
+    }
+    pub fn unwrap_symbol(&self) -> Result<&str, ErrType> {
+        match self {
+            Val::Symbol(a) => Ok(&a),
+            _ => Err(ErrType::type_error(Val::SYMBOL_TYPE, self.val_type())),
+         }
+     }
+}
+
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_display_symbol() {
+        let s = Val::Symbol(String::from("a"));
+        assert_eq!(String::from("'a"), s.to_string());
+    }
+
+    #[test]
+    fn test_display_list() {
+        let l = Val::List(vec![Val::Int(1), Val::Int(2), Val::Int(3)]);
+        assert_eq!(String::from("(1, 2, 3)"), l.to_string());
     }
 }

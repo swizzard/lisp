@@ -32,6 +32,23 @@ pub enum Entry {
     Func(Func),
 }
 
+impl Entry {
+    pub fn unwrap_val(&self) -> Option<&Val> {
+        if let Self::Val(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+    pub fn unwrap_func(&self) -> Option<&Func> {
+        if let Self::Func(f) = self {
+            Some(f)
+        } else {
+            None
+        }
+    }
+}
+
 pub struct Scope<'a>(HashMap<&'a str, Entry>);
 
 pub struct Env<'a> {
